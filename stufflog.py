@@ -13,502 +13,295 @@ import os
 import sys
 import yaml
 import subprocess
+import subprocess
 from pathlib import Path
 from typing import Dict, List, Optional, Any
-
+from services.git_service import GitService
+from services.file_service import FileService
 
 class StufflogError(Exception):
     """Base exception for stufflog-specific errors."""
     pass
 
 
-def get_stufflog_dir() -> Path:
+class StufflogApp:
     """
-    Get the directory where stufflog files are stored.
-    
-    Returns:
-        Path: The directory path where stufflog files should be stored.
+    A class that encapsulates the functionality of the stufflog application.
     """
-    stufflog_dir = os.environ.get('STUFFLOG_DIR')
-    if stufflog_dir:
-        directory = Path(stufflog_dir)
-    else:
-        directory = Path.home() / '.stufflog'
     
-    # Create the directory if it doesn't exist
-    if not directory.exists():
-        directory.mkdir(parents=True, exist_ok=True)
-    
-    return directory
-
-
-def get_stufflog_path(category: str) -> Path:
-    """
-    Get the path to a specific stufflog file.
-    
-    Args:
-        category: The category name for the stufflog.
+    def __init__(self, git_service: Optional[GitService] = None, file_service: Optional[FileService] = None):
+        """
+        Initialize the StufflogApp with optional dependencies.
         
-    Returns:
-        Path: The file path for the specified stufflog category.
-    """
-    return get_stufflog_dir() / f"{category}.yml"
-
-
-def load_stufflog(category: str) -> Dict:
-    """
-    Load a stufflog file for a given category.
+        Args:
+            git_service: The GitService to use for git operations. If None,
+                         a new GitService will be created.
+            file_service: The FileService to use for file operations. If None,
+                         a new FileService will be created.
+        """
+        self.git_service = git_service or GitService()
+        self.file_service = file_service or FileService()
     
-    Args:
-        category: The category name for the stufflog.
+
+
+
+
+    def load_stufflog(self, category: str) -> Dict:
+        """
+        Load a stufflog file for a given category.
         
-    Returns:
-        Dict: The loaded stufflog data.
-        
-    Raises:
-        StufflogError: If the stufflog file doesn't exist.
-    """
-    # If git remotes are configured, try to pull changes first
-    if git_has_remotes():
-        git_pull()
-        
-    file_path = get_stufflog_path(category)
-    
-    if not file_path.exists():
-        raise StufflogError(f"No stufflog found for category '{category}'. "
-                           f"Use 'stufflog {category} init' to create one.")
-    
-    with open(file_path, 'r') as file:
-        try:
-            data = yaml.safe_load(file) or {}
-            # Ensure the 'Entries' key exists
-            if 'Entries' not in data:
-                data['Entries'] = {}
-            return data
-        except yaml.YAMLError as e:
-            raise StufflogError(f"Error parsing YAML file: {e}")
-
-
-def git_init() -> bool:
-    """
-    Initialize a git repository in the stufflog directory if one doesn't exist.
-    
-    Returns:
-        bool: True if initialization was successful or already initialized, False otherwise.
-    """
-    stufflog_dir = get_stufflog_dir()
-    git_dir = stufflog_dir / ".git"
-    
-    # Check if git is already initialized
-    if git_dir.exists():
-        return True
-    
-    try:
-        # Initialize git repository
-        subprocess.run(
-            ["git", "init"],
-            cwd=stufflog_dir,
-            check=True,
-            capture_output=True
-        )
-        
-        # Initial commit
-        subprocess.run(
-            ["git", "add", "."],
-            cwd=stufflog_dir,
-            check=True,
-            capture_output=True
-        )
-        
-        subprocess.run(
-            ["git", "commit", "-m", "Initial commit for stufflog"],
-            cwd=stufflog_dir,
-            check=True,
-            capture_output=True
-        )
-        
-        return True
-    except subprocess.CalledProcessError as e:
-        print(f"Git initialization failed: {e}", file=sys.stderr)
-        return False
-    except Exception as e:
-        print(f"Unexpected error during git initialization: {e}", file=sys.stderr)
-        return False
-
-
-def git_has_remotes() -> bool:
-    """
-    Check if the git repository has any remotes configured.
-    
-    Returns:
-        bool: True if remotes are configured, False otherwise.
-    """
-    stufflog_dir = get_stufflog_dir()
-    git_dir = stufflog_dir / ".git"
-    
-    # Check if git is initialized
-    if not git_dir.exists():
-        return False
-    
-    try:
-        # Check for remotes
-        result = subprocess.run(
-            ["git", "remote"],
-            cwd=stufflog_dir,
-            check=True,
-            capture_output=True,
-            text=True
-        )
-        
-        # If there are remotes, the output will not be empty
-        return bool(result.stdout.strip())
-    except subprocess.CalledProcessError:
-        return False
-    except Exception:
-        return False
-
-
-def git_pull() -> bool:
-    """
-    Pull changes from the remote repository.
-    
-    Returns:
-        bool: True if pull was successful, False otherwise.
-    """
-    stufflog_dir = get_stufflog_dir()
-    
-    # Check if git is initialized and has remotes
-    if not git_has_remotes():
-        return False
-    
-    try:
-        # Pull changes
-        result = subprocess.run(
-            ["git", "pull"],
-            cwd=stufflog_dir,
-            check=True,
-            capture_output=True,
-            text=True
-        )
-        
-        return True
-    except subprocess.CalledProcessError as e:
-        print(f"Git pull failed: {e}", file=sys.stderr)
-        return False
-    except Exception as e:
-        print(f"Unexpected error during git pull: {e}", file=sys.stderr)
-        return False
-
-
-def git_push() -> bool:
-    """
-    Push changes to the remote repository.
-    
-    Returns:
-        bool: True if push was successful, False otherwise.
-    """
-    stufflog_dir = get_stufflog_dir()
-    
-    # Check if git is initialized and has remotes
-    if not git_has_remotes():
-        return False
-    
-    try:
-        # Add all changes
-        subprocess.run(
-            ["git", "add", "."],
-            cwd=stufflog_dir,
-            check=True,
-            capture_output=True
-        )
-        
-        # Commit changes
-        try:
-            subprocess.run(
-                ["git", "commit", "-m", "Update stufflog entries"],
-                cwd=stufflog_dir,
-                check=True,
-                capture_output=True
-            )
-        except subprocess.CalledProcessError:
-            # It's ok if commit fails (e.g., no changes)
-            pass
-        
-        # Push changes
-        subprocess.run(
-            ["git", "push"],
-            cwd=stufflog_dir,
-            check=True,
-            capture_output=True
-        )
-        
-        return True
-    except subprocess.CalledProcessError as e:
-        print(f"Git push failed: {e}", file=sys.stderr)
-        return False
-    except Exception as e:
-        print(f"Unexpected error during git push: {e}", file=sys.stderr)
-        return False
-
-
-def save_stufflog(category: str, data: Dict) -> None:
-    """
-    Save data to a stufflog file.
-    
-    Args:
-        category: The category name for the stufflog.
-        data: The data to save.
-    """
-    file_path = get_stufflog_path(category)
-    
-    with open(file_path, 'w') as file:
-        yaml.dump(data, file, default_flow_style=False, sort_keys=False)
-    
-    # Attempt to push changes if git is set up with remotes
-    if git_has_remotes():
-        git_push()
-
-
-def init_stufflog(category: str) -> None:
-    """
-    Initialize a new stufflog for the given category.
-    
-    Args:
-        category: The category name for the new stufflog.
-        
-    Raises:
-        StufflogError: If a stufflog with the given category already exists.
-    """
-    file_path = get_stufflog_path(category)
-    
-    if file_path.exists():
-        raise StufflogError(f"A stufflog with the category '{category}' already exists.")
-    
-    # Create an empty stufflog with the basic structure
-    data = {
-        'Entries': {}
-    }
-    
-    save_stufflog(category, data)
-    print(f"Initialized stufflog for category '{category}'")
-
-
-def add_entry(category: str, title: str, rating: int, comment: Optional[str] = None) -> None:
-    """
-    Add a new entry to a stufflog.
-    
-    Args:
-        category: The category name for the stufflog.
-        title: The title of the entry.
-        rating: The rating (numeric) for the entry.
-        comment: An optional comment for the entry.
-        
-    Raises:
-        StufflogError: If an entry with the same title already exists.
-    """
-    data = load_stufflog(category)
-    
-    if title in data['Entries']:
-        raise StufflogError(
-            f"An entry titled '{title}' already exists. "
-            f"Did you mean 'stufflog {category} edit {title} --rating={rating}'?"
-        )
-    
-    # Create a new entry
-    entry = {
-        'Datetime': datetime.datetime.now().isoformat(),
-        'Title': title,
-        'Rating': rating
-    }
-    
-    if comment:
-        entry['Comment'] = comment
-    
-    # Add the entry to the stufflog
-    data['Entries'][title] = entry
-    
-    save_stufflog(category, data)
-    print(f"Added entry '{title}' to {category} stufflog")
-
-
-def delete_entry(category: str, title: str) -> None:
-    """
-    Delete an entry from a stufflog.
-    
-    Args:
-        category: The category name for the stufflog.
-        title: The title of the entry to delete.
-        
-    Raises:
-        StufflogError: If no entry with the given title exists.
-    """
-    data = load_stufflog(category)
-    
-    if title not in data['Entries']:
-        raise StufflogError(f"No entry titled '{title}' found in {category} stufflog.")
-    
-    # Delete the entry
-    del data['Entries'][title]
-    
-    save_stufflog(category, data)
-    print(f"Deleted entry '{title}' from {category} stufflog")
-
-
-def query_entries(
-    category: str,
-    greater_than: Optional[int] = None,
-    less_than: Optional[int] = None,
-    after: Optional[str] = None,
-    before: Optional[str] = None
-) -> List[Dict]:
-    """
-    Query entries in a stufflog based on various filters.
-    
-    Args:
-        category: The category name for the stufflog.
-        greater_than: Filter for entries with rating greater than this value.
-        less_than: Filter for entries with rating less than this value.
-        after: Filter for entries with datetime after this value.
-        before: Filter for entries with datetime before this value.
-        
-    Returns:
-        List[Dict]: A list of entries that match the query criteria.
-    """
-    data = load_stufflog(category)
-    results = []
-    
-    for title, entry in data['Entries'].items():
-        # Check if the entry meets all the filter criteria
-        include = True
-        
-        if greater_than is not None and entry.get('Rating', 0) <= greater_than:
-            include = False
+        Args:
+            category: The category name for the stufflog.
             
-        if less_than is not None and entry.get('Rating', 0) >= less_than:
-            include = False
+        Returns:
+            Dict: The loaded stufflog data.
             
-        if after is not None:
-            entry_date = datetime.datetime.fromisoformat(entry.get('Datetime', ''))
-            filter_date = datetime.datetime.fromisoformat(after)
-            if entry_date <= filter_date:
+        Raises:
+            StufflogError: If the stufflog file doesn't exist.
+        """
+        # If git remotes are configured, try to pull changes first
+        if self.git_service.has_remotes():
+            self.git_service.pull()
+        
+        file_path = self.file_service.get_stufflog_path(category)
+        
+        if not file_path.exists():
+            raise StufflogError(f"No stufflog found for category '{category}'. "
+                               f"Use 'stufflog {category} init' to create one.")
+        
+        try:
+            return self.file_service.load_stufflog(category)
+        except Exception as e:
+            raise StufflogError(f"Error loading stufflog: {e}")
+
+    def save_stufflog(self, category: str, data: Dict) -> None:
+        """
+        Save data to a stufflog file.
+        
+        Args:
+            category: The category name for the stufflog.
+            data: The data to save.
+        """
+        self.file_service.save_stufflog(category, data)
+        
+        # Attempt to push changes if git is set up with remotes
+        if self.git_service.has_remotes():
+            self.git_service.push()
+    def delete_entry(self, category: str, title: str) -> None:
+        """
+        Delete an entry from a stufflog.
+        
+        Args:
+            category: The category name for the stufflog.
+            title: The title of the entry to delete.
+            
+        Raises:
+            StufflogError: If no entry with the given title exists.
+        """
+        data = self.load_stufflog(category)
+        
+        if title not in data['Entries']:
+            raise StufflogError(f"No entry titled '{title}' found in {category} stufflog.")
+        
+        # Delete the entry
+        del data['Entries'][title]
+        
+        self.save_stufflog(category, data)
+        print(f"Deleted entry '{title}' from {category} stufflog")
+
+
+    def query_entries(
+        self,
+        category: str,
+        greater_than: Optional[int] = None,
+        less_than: Optional[int] = None,
+        after: Optional[str] = None,
+        before: Optional[str] = None
+    ) -> List[Dict]:
+        """
+        Query entries in a stufflog based on various filters.
+        
+        Args:
+            category: The category name for the stufflog.
+            greater_than: Filter for entries with rating greater than this value.
+            less_than: Filter for entries with rating less than this value.
+            after: Filter for entries with datetime after this value.
+            before: Filter for entries with datetime before this value.
+            
+        Returns:
+            List[Dict]: A list of entries that match the query criteria.
+        """
+        data = self.load_stufflog(category)
+        results = []
+        
+        for title, entry in data['Entries'].items():
+            # Check if the entry meets all the filter criteria
+            include = True
+            
+            if greater_than is not None and entry.get('Rating', 0) <= greater_than:
                 include = False
                 
-        if before is not None:
-            entry_date = datetime.datetime.fromisoformat(entry.get('Datetime', ''))
-            filter_date = datetime.datetime.fromisoformat(before)
-            if entry_date >= filter_date:
+            if less_than is not None and entry.get('Rating', 0) >= less_than:
                 include = False
-        
-        if include:
-            entry_copy = entry.copy()
-            entry_copy['Title'] = title
-            results.append(entry_copy)
-    
-    return results
-
-
-def search_entries(category: str, search_term: str) -> List[Dict]:
-    """
-    Search for entries in a stufflog that contain a given text in title or comment.
-    
-    Args:
-        category: The category name for the stufflog.
-        search_term: The text to search for in entry titles and comments.
-        
-    Returns:
-        List[Dict]: A list of entries that match the search criteria.
-    """
-    data = load_stufflog(category)
-    results = []
-    search_term = search_term.lower()  # Convert to lowercase for case-insensitive search
-    
-    for title, entry in data['Entries'].items():
-        # Check if the search term is in the title or comment
-        title_match = search_term in title.lower()
-        comment_match = 'Comment' in entry and search_term in entry['Comment'].lower()
-        
-        if title_match or comment_match:
-            entry_copy = entry.copy()
-            entry_copy['Title'] = title
-            results.append(entry_copy)
-    
-    return results
-
-
-def display_entries(entries: List[Dict]) -> None:
-    """
-    Display a list of entries in a readable format.
-    
-    Args:
-        entries: The list of entries to display.
-    """
-    if not entries:
-        print("No matching entries found.")
-        return
-    
-    print(f"Found {len(entries)} matching entries:")
-    print()
-    
-    for entry in entries:
-        print(f"## {entry.get('Title', 'Untitled')}")
-        print(f"- **Datetime**: {entry.get('Datetime', 'Unknown')}")
-        print(f"- **Rating**: {entry.get('Rating', 'No rating')}")
-        
-        if 'Comment' in entry:
-            print(f"- **Comment**: {entry['Comment']}")
+                
+            if after is not None:
+                entry_date = datetime.datetime.fromisoformat(entry.get('Datetime', ''))
+                filter_date = datetime.datetime.fromisoformat(after)
+                if entry_date <= filter_date:
+                    include = False
+                    
+            if before is not None:
+                entry_date = datetime.datetime.fromisoformat(entry.get('Datetime', ''))
+                filter_date = datetime.datetime.fromisoformat(before)
+                if entry_date >= filter_date:
+                    include = False
             
+            if include:
+                entry_copy = entry.copy()
+                entry_copy['Title'] = title
+                results.append(entry_copy)
+        
+        return results
+
+
+    def search_entries(self, category: str, search_term: str) -> List[Dict]:
+        """
+        Search for entries in a stufflog that contain a given text in title or comment.
+        
+        Args:
+            category: The category name for the stufflog.
+            search_term: The text to search for in entry titles and comments.
+            
+        Returns:
+            List[Dict]: A list of entries that match the search criteria.
+        """
+        data = self.load_stufflog(category)
+        results = []
+        search_term = search_term.lower()  # Convert to lowercase for case-insensitive search
+        
+        for title, entry in data['Entries'].items():
+            # Check if the search term is in the title or comment
+            title_match = search_term in title.lower()
+            comment_match = 'Comment' in entry and search_term in entry['Comment'].lower()
+            
+            if title_match or comment_match:
+                entry_copy = entry.copy()
+                entry_copy['Title'] = title
+                results.append(entry_copy)
+        
+        return results
+
+
+    def display_entries(self, entries: List[Dict]) -> None:
+        """
+        Display a list of entries in a readable format.
+        
+        Args:
+            entries: The list of entries to display.
+        """
+        if not entries:
+            print("No matching entries found.")
+            return
+        
+        print(f"Found {len(entries)} matching entries:")
         print()
-
-
-def open_stufflog_dir():
-    """
-    Open a new shell in the stufflog directory.
-    """
-    stufflog_dir = get_stufflog_dir()
-    print(f"Opening shell in {stufflog_dir}")
-    
-    # Determine the user's shell
-    user_shell = os.environ.get('SHELL', '/bin/sh')
-    
-    # Open a new shell in the stufflog directory
-    try:
-        subprocess.run([user_shell], cwd=stufflog_dir)
-    except Exception as e:
-        raise StufflogError(f"Failed to open shell: {e}")
-
-def setup_git_remote(remote_url: str, remote_name: str = "origin") -> bool:
-    """
-    Set up a remote repository for the git repository.
-    
-    Args:
-        remote_url: URL of the remote repository
-        remote_name: Name for the remote (default: origin)
         
-    Returns:
-        bool: True if successful, False otherwise
-    """
-    stufflog_dir = get_stufflog_dir()
-    
-    # Make sure git is initialized
-    if not git_init():
-        print("Failed to initialize git repository.", file=sys.stderr)
-        return False
-    
-    try:
-        # Add remote
-        subprocess.run(
-            ["git", "remote", "add", remote_name, remote_url],
-            cwd=stufflog_dir,
-            check=True,
-            capture_output=True
-        )
+        for entry in entries:
+            print(f"## {entry.get('Title', 'Untitled')}")
+            print(f"- **Datetime**: {entry.get('Datetime', 'Unknown')}")
+            print(f"- **Rating**: {entry.get('Rating', 'No rating')}")
+            
+            if 'Comment' in entry:
+                print(f"- **Comment**: {entry['Comment']}")
+                
+            print()
+
+
+    def open_stufflog_dir(self):
+        """
+        Open a new shell in the stufflog directory.
+        """
+        stufflog_dir = self.file_service.get_stufflog_dir()
+        self.file_service.ensure_stufflog_dir_exists()
+        print(f"Opening shell in {stufflog_dir}")
         
-        print(f"Remote '{remote_name}' added successfully.")
-        print(f"You can now push your stufflog data with: git push -u {remote_name} master")
-        return True
-    except subprocess.CalledProcessError as e:
-        print(f"Failed to add remote: {e}", file=sys.stderr)
-        return False
+        # Determine the user's shell
+        user_shell = os.environ.get('SHELL', '/bin/sh')
+        
+        # Open a new shell in the stufflog directory
+        try:
+            subprocess.run([user_shell], cwd=stufflog_dir)
+        except Exception as e:
+            raise StufflogError(f"Failed to open shell: {e}")
+
+    def setup_git_remote(self, remote_url: str, remote_name: str = "origin") -> bool:
+        """
+        Set up a remote repository for the git repository.
+        
+        Args:
+            remote_url: URL of the remote repository
+            remote_name: Name for the remote (default: origin)
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        return self.git_service.setup_remote(remote_url, remote_name)
+            
+    def init_stufflog(self, category: str) -> None:
+        """
+        Initialize a new stufflog file.
+        
+        Args:
+            category: The category name for the new stufflog.
+        """
+        file_path = self.file_service.get_stufflog_path(category)
+        
+        if file_path.exists():
+            raise StufflogError(f"Stufflog for category '{category}' already exists.")
+        
+        # Initialize with empty data structure
+        data = {
+            "Entries": {}
+        }
+        
+        self.save_stufflog(category, data)
+        print(f"Initialized new stufflog for category '{category}'")
+        
+        # Initialize git repository if it doesn't exist
+        self.git_service.init()
+        
+    def add_entry(self, category: str, title: str, rating: int, comment: Optional[str] = None) -> None:
+        """
+        Add a new entry to a stufflog.
+        
+        Args:
+            category: The category name for the stufflog.
+            title: The title of the entry.
+            rating: The rating for the entry.
+            comment: Optional comment for the entry.
+            
+        Raises:
+            StufflogError: If an entry with the same title already exists.
+        """
+        data = self.load_stufflog(category)
+        
+        if title in data['Entries']:
+            raise StufflogError(f"Entry titled '{title}' already exists in {category} stufflog.")
+        
+        # Create the new entry
+        entry = {
+            "Datetime": datetime.datetime.now().isoformat(),
+            "Rating": rating
+        }
+        
+        if comment:
+            entry["Comment"] = comment
+            
+        # Add the entry to the data
+        data['Entries'][title] = entry
+        
+        self.save_stufflog(category, data)
+        print(f"Added entry '{title}' to {category} stufflog")
 
 
 def main():
@@ -562,76 +355,101 @@ def main():
     delete_parser.add_argument("title", help="Title of the entry to delete")
     
     # Search command
-    search_parser = subparsers.add_parser("search", help="Search for text in entry titles and comments")
-    search_parser.add_argument("term", help="Text to search for")
+    search_parser = subparsers.add_parser("search", help="Search for entries containing text")
+    search_parser.add_argument("term", help="Text to search for in entry titles and comments")
     
+    # Parse the arguments
     args = parser.parse_args()
     
+    # Create an instance of StufflogApp with GitService dependency
+    app = StufflogApp(git_service=GitService(), file_service=FileService())
+    
     try:
-        # Handle the cd command (no category needed)
+        # Handle the cd command (no category required)
         if args.command == "cd":
-            open_stufflog_dir()
+            app.open_stufflog_dir()
             return 0
             
-        # Handle git commands (no category needed)
-        elif args.command == "git":
+        # Handle the git command (no category required)
+        if args.command == "git":
             if args.git_command == "init":
-                success = git_init()
-                if success:
+                if app.git_service.init():
                     print("Git repository initialized successfully.")
+                    return 0
                 else:
                     print("Failed to initialize git repository.", file=sys.stderr)
                     return 1
-                return 0
-                
             elif args.git_command == "remote":
-                success = setup_git_remote(args.url, args.name)
-                if not success:
+                if app.setup_git_remote(args.url, args.name):
+                    return 0
+                else:
                     return 1
-                return 0
-                
             else:
-                git_parser.print_help()
+                print("Unknown git command.", file=sys.stderr)
                 return 1
-            
-        # Check if category is provided for commands that require it
-        if args.category is None and args.command not in ["cd", "git"]:
-            print("Error: Category is required for this command.", file=sys.stderr)
-            parser.print_help()
+                
+        # All other commands require a category
+        if args.category is None:
+            print("Category is required for this command.", file=sys.stderr)
             return 1
             
-        # Normal command flow for other categories
+        # Handle the init command
         if args.command == "init":
-            init_stufflog(args.category)
-        
+            app.init_stufflog(args.category)
+            return 0
+            
+        # Handle the add command
         elif args.command == "add":
-            add_entry(args.category, args.title, args.rating, args.comment)
-        
+            app.add_entry(args.category, args.title, args.rating, args.comment)
+            return 0
+            
+        # Handle the query command
         elif args.command == "query":
-            entries = query_entries(
+            entries = app.query_entries(
                 args.category,
                 args.greater_than,
                 args.less_than,
                 args.after,
                 args.before
             )
-            display_entries(entries)
-        
+            app.display_entries(entries)
+            return 0
+            
+        # Handle the delete command
         elif args.command == "delete":
-            delete_entry(args.category, args.title)
-        
+            app.delete_entry(args.category, args.title)
+            return 0
+            
+        # Handle the search command
         elif args.command == "search":
-            entries = search_entries(args.category, args.term)
-            display_entries(entries)
-        
+            entries = app.search_entries(args.category, args.term)
+            app.display_entries(entries)
+            return 0
+            
+        # If no command is specified, display the stufflog if it exists
+        elif args.command is None:
+            try:
+                data = app.load_stufflog(args.category)
+                entries = [
+                    {**entry, "Title": title}
+                    for title, entry in data["Entries"].items()
+                ]
+                app.display_entries(entries)
+                return 0
+            except StufflogError as e:
+                print(str(e), file=sys.stderr)
+                return 1
+                
         else:
-            parser.print_help()
+            print(f"Unknown command: {args.command}", file=sys.stderr)
+            return 1
             
     except StufflogError as e:
+        print(str(e), file=sys.stderr)
+        return 1
+    except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         return 1
-    
-    return 0
 
 
 if __name__ == "__main__":

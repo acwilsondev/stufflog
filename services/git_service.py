@@ -27,7 +27,10 @@ class GitService:
                       it will use the default stufflog directory.
                       Can be a string or Path object.
         """
-        self.base_dir = base_dir
+        if base_dir is None:
+            self.base_dir = Path.home() / ".stufflog"
+        else:
+            self.base_dir = base_dir
 
     @property
     def git_dir_path(self) -> Path:
@@ -35,8 +38,10 @@ class GitService:
         Get the path to the .git directory in the base directory.
         
         Returns:
+            Path: Path to the .git directory
         """
-        return Path(self.base_dir + ".git")
+        base_path = Path(self.base_dir)
+        return base_path / ".git"
  
     def init(self) -> bool:
         """
@@ -89,7 +94,7 @@ class GitService:
         Returns:
             bool: True if remotes are configured, False otherwise.
         """
-        git_dir = self.base_dir + ".git"
+        git_dir = self.git_dir_path
         
         # Check if git is initialized
         if not self.git_dir_path.exists():

@@ -13,8 +13,8 @@ import tempfile
 from pathlib import Path
 
 from stufflog import StufflogApp, StufflogError
-from git_service import GitService
-from file_service import FileService
+from services.git_service import GitService
+from services.file_service import FileService
 
 
 class TestStufflogApp(unittest.TestCase):

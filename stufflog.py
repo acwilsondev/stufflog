@@ -16,8 +16,8 @@ import subprocess
 import subprocess
 from pathlib import Path
 from typing import Dict, List, Optional, Any
-from git_service import GitService
-from file_service import FileService
+from services.git_service import GitService
+from services.file_service import FileService
 
 class StufflogError(Exception):
     """Base exception for stufflog-specific errors."""

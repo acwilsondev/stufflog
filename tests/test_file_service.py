@@ -5,7 +5,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 import yaml
 
-from file_service import FileService
+from services.file_service import FileService
 
 class TestFileService(unittest.TestCase):
     def setUp(self):

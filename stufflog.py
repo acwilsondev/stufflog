@@ -13,10 +13,11 @@ import os
 import sys
 import yaml
 import subprocess
+import subprocess
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from git_service import GitService
-
+from file_service import FileService
 
 class StufflogError(Exception):
     """Base exception for stufflog-specific errors."""
@@ -28,47 +29,21 @@ class StufflogApp:
     A class that encapsulates the functionality of the stufflog application.
     """
     
-    def __init__(self, git_service: Optional[GitService] = None):
+    def __init__(self, git_service: Optional[GitService] = None, file_service: Optional[FileService] = None):
         """
-        Initialize the StufflogApp with optional GitService dependency.
+        Initialize the StufflogApp with optional dependencies.
         
         Args:
             git_service: The GitService to use for git operations. If None,
                          a new GitService will be created.
+            file_service: The FileService to use for file operations. If None,
+                         a new FileService will be created.
         """
         self.git_service = git_service or GitService()
+        self.file_service = file_service or FileService()
     
-    def get_stufflog_dir(self) -> Path:
-        """
-        Get the directory where stufflog files are stored.
-        
-        Returns:
-            Path: The directory path where stufflog files should be stored.
-        """
-        stufflog_dir = os.environ.get('STUFFLOG_DIR')
-        if stufflog_dir:
-            directory = Path(stufflog_dir)
-        else:
-            directory = Path.home() / '.stufflog'
-        
-        # Create the directory if it doesn't exist
-        if not directory.exists():
-            directory.mkdir(parents=True, exist_ok=True)
-        
-        return directory
 
 
-    def get_stufflog_path(self, category: str) -> Path:
-        """
-        Get the path to a specific stufflog file.
-        
-        Args:
-            category: The category name for the stufflog.
-            
-        Returns:
-            Path: The file path for the specified stufflog category.
-        """
-        return self.get_stufflog_dir() / f"{category}.yml"
 
 
     def load_stufflog(self, category: str) -> Dict:
@@ -85,24 +60,19 @@ class StufflogApp:
             StufflogError: If the stufflog file doesn't exist.
         """
         # If git remotes are configured, try to pull changes first
-        # If git remotes are configured, try to pull changes first
         if self.git_service.has_remotes():
             self.git_service.pull()
-        file_path = self.get_stufflog_path(category)
+        
+        file_path = self.file_service.get_stufflog_path(category)
         
         if not file_path.exists():
             raise StufflogError(f"No stufflog found for category '{category}'. "
                                f"Use 'stufflog {category} init' to create one.")
         
-        with open(file_path, 'r') as file:
-            try:
-                data = yaml.safe_load(file) or {}
-                # Ensure the 'Entries' key exists
-                if 'Entries' not in data:
-                    data['Entries'] = {}
-                return data
-            except yaml.YAMLError as e:
-                raise StufflogError(f"Error parsing YAML file: {e}")
+        try:
+            return self.file_service.load_stufflog(category)
+        except Exception as e:
+            raise StufflogError(f"Error loading stufflog: {e}")
 
     def save_stufflog(self, category: str, data: Dict) -> None:
         """
@@ -112,12 +82,8 @@ class StufflogApp:
             category: The category name for the stufflog.
             data: The data to save.
         """
-        file_path = self.get_stufflog_path(category)
+        self.file_service.save_stufflog(category, data)
         
-        with open(file_path, 'w') as file:
-            yaml.dump(data, file, default_flow_style=False, sort_keys=False)
-        
-        # Attempt to push changes if git is set up with remotes
         # Attempt to push changes if git is set up with remotes
         if self.git_service.has_remotes():
             self.git_service.push()
@@ -255,7 +221,8 @@ class StufflogApp:
         """
         Open a new shell in the stufflog directory.
         """
-        stufflog_dir = self.get_stufflog_dir()
+        stufflog_dir = self.file_service.get_stufflog_dir()
+        self.file_service.ensure_stufflog_dir_exists()
         print(f"Opening shell in {stufflog_dir}")
         
         # Determine the user's shell
@@ -287,7 +254,7 @@ class StufflogApp:
         Args:
             category: The category name for the new stufflog.
         """
-        file_path = self.get_stufflog_path(category)
+        file_path = self.file_service.get_stufflog_path(category)
         
         if file_path.exists():
             raise StufflogError(f"Stufflog for category '{category}' already exists.")
@@ -395,7 +362,7 @@ def main():
     args = parser.parse_args()
     
     # Create an instance of StufflogApp with GitService dependency
-    app = StufflogApp(git_service=GitService())
+    app = StufflogApp(git_service=GitService(), file_service=FileService())
     
     try:
         # Handle the cd command (no category required)

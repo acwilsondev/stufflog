@@ -18,15 +18,20 @@ class GitService:
     A class that encapsulates git operations for the stufflog application.
     """
     
-    def __init__(self, base_dir: Optional[Path] = None):
+    def __init__(self, base_dir: Optional[str | Path] = None):
         """
         Initialize the GitService with a base directory.
         
         Args:
             base_dir: The directory to use for git operations. If None, 
                       it will use the default stufflog directory.
+                      Can be a string or Path object.
         """
-        self.base_dir = base_dir
+        # Convert string to Path if necessary
+        if isinstance(base_dir, str):
+            self.base_dir = Path(base_dir)
+        else:
+            self.base_dir = base_dir
         if self.base_dir is None:
             # Use the same directory logic as StufflogApp
             stufflog_dir = os.environ.get('STUFFLOG_DIR')

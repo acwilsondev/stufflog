@@ -18,7 +18,7 @@ class GitService:
     A class that encapsulates git operations for the stufflog application.
     """
     
-    def __init__(self, base_dir: Optional[str | Path] = None):
+    def __init__(self, base_dir: Optional[str] = None):
         """
         Initialize the GitService with a base directory.
         
@@ -27,23 +27,17 @@ class GitService:
                       it will use the default stufflog directory.
                       Can be a string or Path object.
         """
-        # Convert string to Path if necessary
-        if isinstance(base_dir, str):
-            self.base_dir = Path(base_dir)
-        else:
-            self.base_dir = base_dir
-        if self.base_dir is None:
-            # Use the same directory logic as StufflogApp
-            stufflog_dir = os.environ.get('STUFFLOG_DIR')
-            if stufflog_dir:
-                self.base_dir = Path(stufflog_dir)
-            else:
-                self.base_dir = Path.home() / '.stufflog'
-                
-            # Create the directory if it doesn't exist
-            if not self.base_dir.exists():
-                self.base_dir.mkdir(parents=True, exist_ok=True)
-    
+        self.base_dir = base_dir
+
+    @property
+    def git_dir_path(self) -> Path:
+        """
+        Get the path to the .git directory in the base directory.
+        
+        Returns:
+        """
+        return Path(self.base_dir + ".git")
+ 
     def init(self) -> bool:
         """
         Initialize a git repository in the base directory if one doesn't exist.
@@ -51,10 +45,9 @@ class GitService:
         Returns:
             bool: True if initialization was successful or already initialized, False otherwise.
         """
-        git_dir = self.base_dir / ".git"
     
         # Check if git is already initialized
-        if git_dir.exists():
+        if self.git_dir_path.exists():
             return True
         
         try:
@@ -96,10 +89,10 @@ class GitService:
         Returns:
             bool: True if remotes are configured, False otherwise.
         """
-        git_dir = self.base_dir / ".git"
+        git_dir = self.base_dir + ".git"
         
         # Check if git is initialized
-        if not git_dir.exists():
+        if not self.git_dir_path.exists():
             return False
         
         try:

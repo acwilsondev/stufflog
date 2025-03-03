@@ -94,6 +94,7 @@ class FileService:
         except yaml.YAMLError:
             # If the file exists but is empty or invalid YAML, return an empty stufflog
             return {"Entries": {}}
+    
     def save_stufflog(self, name: str, data: Dict[str, Any]) -> None:
         """Save a stufflog to the filesystem.
 

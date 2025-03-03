@@ -12,6 +12,7 @@ import datetime
 import os
 import sys
 import yaml
+import subprocess
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
@@ -67,6 +68,10 @@ def load_stufflog(category: str) -> Dict:
     Raises:
         StufflogError: If the stufflog file doesn't exist.
     """
+    # If git remotes are configured, try to pull changes first
+    if git_has_remotes():
+        git_pull()
+        
     file_path = get_stufflog_path(category)
     
     if not file_path.exists():
@@ -84,6 +89,168 @@ def load_stufflog(category: str) -> Dict:
             raise StufflogError(f"Error parsing YAML file: {e}")
 
 
+def git_init() -> bool:
+    """
+    Initialize a git repository in the stufflog directory if one doesn't exist.
+    
+    Returns:
+        bool: True if initialization was successful or already initialized, False otherwise.
+    """
+    stufflog_dir = get_stufflog_dir()
+    git_dir = stufflog_dir / ".git"
+    
+    # Check if git is already initialized
+    if git_dir.exists():
+        return True
+    
+    try:
+        # Initialize git repository
+        subprocess.run(
+            ["git", "init"],
+            cwd=stufflog_dir,
+            check=True,
+            capture_output=True
+        )
+        
+        # Initial commit
+        subprocess.run(
+            ["git", "add", "."],
+            cwd=stufflog_dir,
+            check=True,
+            capture_output=True
+        )
+        
+        subprocess.run(
+            ["git", "commit", "-m", "Initial commit for stufflog"],
+            cwd=stufflog_dir,
+            check=True,
+            capture_output=True
+        )
+        
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"Git initialization failed: {e}", file=sys.stderr)
+        return False
+    except Exception as e:
+        print(f"Unexpected error during git initialization: {e}", file=sys.stderr)
+        return False
+
+
+def git_has_remotes() -> bool:
+    """
+    Check if the git repository has any remotes configured.
+    
+    Returns:
+        bool: True if remotes are configured, False otherwise.
+    """
+    stufflog_dir = get_stufflog_dir()
+    git_dir = stufflog_dir / ".git"
+    
+    # Check if git is initialized
+    if not git_dir.exists():
+        return False
+    
+    try:
+        # Check for remotes
+        result = subprocess.run(
+            ["git", "remote"],
+            cwd=stufflog_dir,
+            check=True,
+            capture_output=True,
+            text=True
+        )
+        
+        # If there are remotes, the output will not be empty
+        return bool(result.stdout.strip())
+    except subprocess.CalledProcessError:
+        return False
+    except Exception:
+        return False
+
+
+def git_pull() -> bool:
+    """
+    Pull changes from the remote repository.
+    
+    Returns:
+        bool: True if pull was successful, False otherwise.
+    """
+    stufflog_dir = get_stufflog_dir()
+    
+    # Check if git is initialized and has remotes
+    if not git_has_remotes():
+        return False
+    
+    try:
+        # Pull changes
+        result = subprocess.run(
+            ["git", "pull"],
+            cwd=stufflog_dir,
+            check=True,
+            capture_output=True,
+            text=True
+        )
+        
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"Git pull failed: {e}", file=sys.stderr)
+        return False
+    except Exception as e:
+        print(f"Unexpected error during git pull: {e}", file=sys.stderr)
+        return False
+
+
+def git_push() -> bool:
+    """
+    Push changes to the remote repository.
+    
+    Returns:
+        bool: True if push was successful, False otherwise.
+    """
+    stufflog_dir = get_stufflog_dir()
+    
+    # Check if git is initialized and has remotes
+    if not git_has_remotes():
+        return False
+    
+    try:
+        # Add all changes
+        subprocess.run(
+            ["git", "add", "."],
+            cwd=stufflog_dir,
+            check=True,
+            capture_output=True
+        )
+        
+        # Commit changes
+        try:
+            subprocess.run(
+                ["git", "commit", "-m", "Update stufflog entries"],
+                cwd=stufflog_dir,
+                check=True,
+                capture_output=True
+            )
+        except subprocess.CalledProcessError:
+            # It's ok if commit fails (e.g., no changes)
+            pass
+        
+        # Push changes
+        subprocess.run(
+            ["git", "push"],
+            cwd=stufflog_dir,
+            check=True,
+            capture_output=True
+        )
+        
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"Git push failed: {e}", file=sys.stderr)
+        return False
+    except Exception as e:
+        print(f"Unexpected error during git push: {e}", file=sys.stderr)
+        return False
+
+
 def save_stufflog(category: str, data: Dict) -> None:
     """
     Save data to a stufflog file.
@@ -96,6 +263,10 @@ def save_stufflog(category: str, data: Dict) -> None:
     
     with open(file_path, 'w') as file:
         yaml.dump(data, file, default_flow_style=False, sort_keys=False)
+    
+    # Attempt to push changes if git is set up with remotes
+    if git_has_remotes():
+        git_push()
 
 
 def init_stufflog(category: str) -> None:
@@ -289,6 +460,57 @@ def display_entries(entries: List[Dict]) -> None:
         print()
 
 
+def open_stufflog_dir():
+    """
+    Open a new shell in the stufflog directory.
+    """
+    stufflog_dir = get_stufflog_dir()
+    print(f"Opening shell in {stufflog_dir}")
+    
+    # Determine the user's shell
+    user_shell = os.environ.get('SHELL', '/bin/sh')
+    
+    # Open a new shell in the stufflog directory
+    try:
+        subprocess.run([user_shell], cwd=stufflog_dir)
+    except Exception as e:
+        raise StufflogError(f"Failed to open shell: {e}")
+
+def setup_git_remote(remote_url: str, remote_name: str = "origin") -> bool:
+    """
+    Set up a remote repository for the git repository.
+    
+    Args:
+        remote_url: URL of the remote repository
+        remote_name: Name for the remote (default: origin)
+        
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    stufflog_dir = get_stufflog_dir()
+    
+    # Make sure git is initialized
+    if not git_init():
+        print("Failed to initialize git repository.", file=sys.stderr)
+        return False
+    
+    try:
+        # Add remote
+        subprocess.run(
+            ["git", "remote", "add", remote_name, remote_url],
+            cwd=stufflog_dir,
+            check=True,
+            capture_output=True
+        )
+        
+        print(f"Remote '{remote_name}' added successfully.")
+        print(f"You can now push your stufflog data with: git push -u {remote_name} master")
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"Failed to add remote: {e}", file=sys.stderr)
+        return False
+
+
 def main():
     """Main entry point for the stufflog CLI application."""
     parser = argparse.ArgumentParser(
@@ -297,10 +519,27 @@ def main():
     
     parser.add_argument(
         "category",
-        help="Category for the stufflog (e.g., books, movies)"
+        help="Category for the stufflog (e.g., books, movies)",
+        nargs="?",
+        default=None
     )
     
     subparsers = parser.add_subparsers(dest="command", help="Command to execute")
+    
+    # Add cd command (no category needed)
+    cd_parser = subparsers.add_parser("cd", help="Open a new shell in the stufflog directory")
+    
+    # Git command
+    git_parser = subparsers.add_parser("git", help="Git repository operations for stufflog")
+    git_subparsers = git_parser.add_subparsers(dest="git_command", help="Git command to execute")
+    
+    # Git init command
+    git_init_parser = git_subparsers.add_parser("init", help="Initialize a git repository for stufflog")
+    
+    # Git remote command
+    git_remote_parser = git_subparsers.add_parser("remote", help="Set a remote repository for synchronization")
+    git_remote_parser.add_argument("url", help="Remote repository URL (e.g., git@github.com:username/repo.git)")
+    git_remote_parser.add_argument("--name", default="origin", help="Name for the remote (default: origin)")
     
     # Init command
     init_parser = subparsers.add_parser("init", help="Initialize a new stufflog")
@@ -329,6 +568,39 @@ def main():
     args = parser.parse_args()
     
     try:
+        # Handle the cd command (no category needed)
+        if args.command == "cd":
+            open_stufflog_dir()
+            return 0
+            
+        # Handle git commands (no category needed)
+        elif args.command == "git":
+            if args.git_command == "init":
+                success = git_init()
+                if success:
+                    print("Git repository initialized successfully.")
+                else:
+                    print("Failed to initialize git repository.", file=sys.stderr)
+                    return 1
+                return 0
+                
+            elif args.git_command == "remote":
+                success = setup_git_remote(args.url, args.name)
+                if not success:
+                    return 1
+                return 0
+                
+            else:
+                git_parser.print_help()
+                return 1
+            
+        # Check if category is provided for commands that require it
+        if args.category is None and args.command not in ["cd", "git"]:
+            print("Error: Category is required for this command.", file=sys.stderr)
+            parser.print_help()
+            return 1
+            
+        # Normal command flow for other categories
         if args.command == "init":
             init_stufflog(args.category)
         

@@ -1,0 +1,9 @@
+# Application dependencies
+PyYAML>=5.1
+
+# Testing dependencies
+pytest>=7.0.0
+pytest-mock>=3.10.0
+pytest-cov>=4.1.0
+pytest-env>=0.8.2
+

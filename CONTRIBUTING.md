@@ -218,14 +218,37 @@ While we prefer Conventional Commits, the most important thing is that your comm
 
 ### Python Styleguide
 
-All Python code is linted with [flake8](https://flake8.pycqa.org/) and formatted with [black](https://github.com/psf/black).
+All Python code is linted with [pylint](https://pylint.pycqa.org/), [flake8](https://flake8.pycqa.org/), and formatted with [black](https://black.readthedocs.io/).
+
+To lint the entire project with pylint:
+```bash
+pylint $(git ls-files '*.py')
+```
+
+You can also specify individual files or directories:
+```bash
+pylint src/stufflog/some_file.py
+```
+
+For style checking with flake8:
+```bash
+flake8 .
+```
+
+Format your code with black:
+```bash
+black .
+```
 
 - Follow [PEP 8](https://www.python.org/dev/peps/pep-0008/) style guide
 - Use 4 spaces for indentation (no tabs)
-- Maximum line length of 88 characters (Black default)
+- Maximum line length of 88 characters
 - Include docstrings for all public modules, functions, classes, and methods
 - Use type hints for function parameters and return values
 - Sort imports with [isort](https://pycqa.github.io/isort/)
+- Follow pylint recommendations to catch errors, enforce best practices, and maintain code quality
+- Use black for consistent code formatting (the pre-commit hook will handle this automatically)
+- Use flake8 for additional style checking and to ensure code quality
 
 ### Documentation Styleguide
 
@@ -260,4 +283,3 @@ This section is primarily for maintainers.
 ---
 
 Thank you for contributing to stufflog! Your time and expertise help make this project better for everyone.
-

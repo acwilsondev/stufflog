@@ -6,10 +6,10 @@ related to stufflog files, including determining directory paths, loading
 from files, and saving to files.
 """
 
-import os
-import yaml
 from pathlib import Path
 from typing import Any, Dict, Optional
+
+import yaml
 
 
 class FileService:
@@ -39,7 +39,7 @@ class FileService:
         """
         if self.base_dir:
             return Path(self.base_dir)
-        
+
         return Path.home() / ".stufflog"
 
     def get_stufflog_path(self, name: str) -> Path:
@@ -54,7 +54,7 @@ class FileService:
         # Make sure the extension is .yml
         if not name.endswith(".yml"):
             name = f"{name}.yml"
-        
+
         return self.get_stufflog_dir() / name
 
     def ensure_stufflog_dir_exists(self) -> None:
@@ -78,9 +78,9 @@ class FileService:
             FileNotFoundError: If the stufflog file doesn't exist
         """
         path = self.get_stufflog_path(name)
-        
+
         try:
-            with open(path, "r") as f:
+            with open(path, "r", encoding="utf-8") as f:
                 data = yaml.safe_load(f) or {}
                 # Ensure 'Entries' key exists
                 # Ensure 'Entries' key exists
@@ -94,7 +94,7 @@ class FileService:
         except yaml.YAMLError:
             # If the file exists but is empty or invalid YAML, return an empty stufflog
             return {"Entries": {}}
-    
+
     def save_stufflog(self, name: str, data: Dict[str, Any]) -> None:
         """Save a stufflog to the filesystem.
 
@@ -103,10 +103,10 @@ class FileService:
             data: The stufflog data to save
         """
         self.ensure_stufflog_dir_exists()
-        
+
         path = self.get_stufflog_path(name)
-        
-        with open(path, "w") as f:
+
+        with open(path, "w", encoding="utf-8") as f:
             yaml.dump(data, f, default_flow_style=False, sort_keys=False)
 
     def list_stufflogs(self) -> list[str]:
@@ -118,12 +118,11 @@ class FileService:
         directory = self.get_stufflog_dir()
         if not directory.exists():
             return []
-            
+
         stufflogs = []
         for filename in directory.iterdir():
             if filename.name.endswith(".yml"):
                 # Remove the .yml extension
                 stufflogs.append(filename.name[:-4])
-        
-        return stufflogs
 
+        return stufflogs

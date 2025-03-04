@@ -11,38 +11,12 @@ import argparse
 import datetime
 import os
 import sys
-import sys
 import subprocess
 from typing import Dict, List, Optional
+from models.query_filters import QueryFilter
 from services.git_service import GitService
 from services.file_service import FileService
 
-
-class QueryFilter:
-    """
-    A class to encapsulate filtering parameters for querying stufflog entries.
-    """
-
-    def __init__(
-        self,
-        greater_than: Optional[int] = None,
-        less_than: Optional[int] = None,
-        after: Optional[str] = None,
-        before: Optional[str] = None,
-    ) -> None:
-        """
-        Initialize the QueryFilter with filtering parameters.
-
-        Args:
-            greater_than: Filter for entries with rating greater than this value.
-            less_than: Filter for entries with rating less than this value.
-            after: Filter for entries with datetime after this value.
-            before: Filter for entries with datetime before this value.
-        """
-        self.greater_than = greater_than
-        self.less_than = less_than
-        self.after = after
-        self.before = before
 
 class StufflogError(Exception):
     """Base exception for stufflog-specific errors."""
@@ -155,7 +129,7 @@ class StufflogApp:
         """
         data = self.load_stufflog(category)
         results = []
-        
+
         # Use an empty filter if none provided
         if query_filter is None:
             query_filter = QueryFilter()
@@ -164,10 +138,16 @@ class StufflogApp:
             # Check if the entry meets all the filter criteria
             include = True
 
-            if query_filter.greater_than is not None and entry.get("Rating", 0) <= query_filter.greater_than:
+            if (
+                query_filter.greater_than is not None
+                and entry.get("Rating", 0) <= query_filter.greater_than
+            ):
                 include = False
 
-            if query_filter.less_than is not None and entry.get("Rating", 0) >= query_filter.less_than:
+            if (
+                query_filter.less_than is not None
+                and entry.get("Rating", 0) >= query_filter.less_than
+            ):
                 include = False
 
             if query_filter.after is not None:
@@ -492,7 +472,7 @@ def main():
     except StufflogError as e:
         print(str(e), file=sys.stderr)
         return 1
-    #pylint: disable=broad-except
+    # pylint: disable=broad-except
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         return 1

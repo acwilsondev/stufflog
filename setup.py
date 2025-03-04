@@ -1,4 +1,5 @@
 #pylint: disable=missing-module-docstring
+#pylint: disable=import-error
 from setuptools import setup, find_packages
 
 setup(

@@ -11,11 +11,11 @@ from unittest.mock import Mock, patch
 import tempfile
 from pathlib import Path
 
-from exceptions import StufflogError
-from models.query_filters import QueryFilter
-from services.git_service import GitService
-from services.file_service import FileService
-from stufflog_app import StufflogApp
+from stufflog.exceptions import StufflogError
+from stufflog.models.query_filters import QueryFilter
+from stufflog.services.git_service import GitService
+from stufflog.services.file_service import FileService
+from stufflog.stufflog_app import StufflogApp
 
 
 class TestStufflogApp(unittest.TestCase):

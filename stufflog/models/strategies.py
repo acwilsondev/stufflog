@@ -4,9 +4,9 @@ This module defines the command strategies for the Stufflog application.
 
 from abc import ABC, abstractmethod
 import sys
-from exceptions import StufflogError
-from stufflog_app import StufflogApp
-from models.query_filters import QueryFilter
+from stufflog.exceptions import StufflogError
+from stufflog.stufflog_app import StufflogApp
+from stufflog.models.query_filters import QueryFilter
 
 
 class CommandStrategy(ABC):

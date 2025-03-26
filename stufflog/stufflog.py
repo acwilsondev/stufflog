@@ -9,10 +9,10 @@ and optional comments in human-readable YAML files.
 
 import argparse
 import sys
-from exceptions import StufflogError
-from services.git_service import GitService
-from services.file_service import FileService
-from models.strategies import (
+from .exceptions import StufflogError
+from .services.git_service import GitService
+from .services.file_service import FileService
+from .models.strategies import (
     CdCommandStrategy,
     GitInitCommandStrategy,
     GitRemoteCommandStrategy,
@@ -23,7 +23,7 @@ from models.strategies import (
     SearchCommandStrategy,
     DefaultCommandStrategy,
 )
-from stufflog_app import StufflogApp
+from .stufflog_app import StufflogApp
 
 
 def main():

@@ -5,7 +5,7 @@ import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from services.file_service import FileService
+from stufflog.services.file_service import FileService
 
 
 class TestFileService(unittest.TestCase):

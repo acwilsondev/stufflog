@@ -89,7 +89,7 @@ class FileService:
                 return data
         except FileNotFoundError:
             # Create an empty stufflog file
-            empty_stufflog = {"Entries": {}}
+            empty_stufflog: Dict[str, Dict] = {"Entries": {}}
             return empty_stufflog
         except yaml.YAMLError:
             # If the file exists but is empty or invalid YAML, return an empty stufflog

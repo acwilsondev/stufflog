@@ -258,7 +258,7 @@ class StufflogApp:
             raise StufflogError(f"Stufflog for category '{category}' already exists.")
 
         # Initialize with empty data structure
-        data = {"Entries": {}}
+        data: Dict[str, Dict] = {"Entries": {}}
 
         self.save_stufflog(category, data)
         print(f"Initialized new stufflog for category '{category}'")

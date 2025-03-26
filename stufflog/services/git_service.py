@@ -29,7 +29,7 @@ class GitService:
         if base_dir is None:
             self.base_dir = Path.home() / ".stufflog"
         else:
-            self.base_dir = base_dir
+            self.base_dir = Path(base_dir)
 
     @property
     def git_dir_path(self) -> Path:

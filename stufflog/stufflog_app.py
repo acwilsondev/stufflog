@@ -6,10 +6,10 @@ import os
 import subprocess
 from typing import Dict, List, Optional
 
-from exceptions import StufflogError
-from models.query_filters import QueryFilter
-from services.file_service import FileService
-from services.git_service import GitService
+from stufflog.exceptions import StufflogError
+from stufflog.models.query_filters import QueryFilter
+from stufflog.services.file_service import FileService
+from stufflog.services.git_service import GitService
 
 
 class StufflogApp:

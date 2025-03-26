@@ -1,6 +1,4 @@
-"""
-
-"""
+"""Class for stufflog application."""
 import datetime
 import os
 import subprocess

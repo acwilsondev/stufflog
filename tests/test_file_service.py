@@ -1,7 +1,7 @@
 """Tests for the FileService class."""
 
-import unittest
 import tempfile
+import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -13,7 +13,7 @@ class TestFileService(unittest.TestCase):
 
     def setUp(self):
         # Create a temporary directory for testing
-        #pylint: disable=consider-using-with
+        # pylint: disable=consider-using-with
         self.temp_dir = tempfile.TemporaryDirectory()
         self.test_dir = Path(self.temp_dir.name)
         self.file_service = FileService(base_dir=self.test_dir)

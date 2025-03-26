@@ -6,15 +6,15 @@ This module demonstrates how to test the StufflogApp in isolation by
 mocking its dependencies (GitService and FileService).
 """
 
-import unittest
-from unittest.mock import Mock, patch
 import tempfile
+import unittest
 from pathlib import Path
+from unittest.mock import Mock, patch
 
 from stufflog.exceptions import StufflogError
 from stufflog.models.query_filters import QueryFilter
-from stufflog.services.git_service import GitService
 from stufflog.services.file_service import FileService
+from stufflog.services.git_service import GitService
 from stufflog.stufflog_app import StufflogApp
 
 
@@ -330,7 +330,9 @@ class TestStufflogApp(unittest.TestCase):
         self.mock_file_service.get_stufflog_path.return_value = mock_path
 
         # Test 1: Filter by rating greater than 3
-        results = self.app.query_entries(self.test_category, QueryFilter(greater_than=3))
+        results = self.app.query_entries(
+            self.test_category, QueryFilter(greater_than=3)
+        )
         self.assertEqual(len(results), 2)  # Should include Entry 1 and Entry 3
         titles = [entry["Title"] for entry in results]
         self.assertIn("Entry 1", titles)
@@ -367,7 +369,8 @@ class TestStufflogApp(unittest.TestCase):
 
         # Test 5: Combined filters (rating > 3 and before 2023-01-03)
         results = self.app.query_entries(
-            self.test_category, QueryFilter(greater_than=3, before="2023-01-03T12:00:00")
+            self.test_category,
+            QueryFilter(greater_than=3, before="2023-01-03T12:00:00"),
         )
         self.assertEqual(len(results), 1)  # Should only include Entry 1
         self.assertEqual(results[0]["Title"], "Entry 1")

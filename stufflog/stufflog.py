@@ -9,20 +9,21 @@ and optional comments in human-readable YAML files.
 
 import argparse
 import sys
+
 from .exceptions import StufflogError
-from .services.git_service import GitService
-from .services.file_service import FileService
 from .models.strategies import (
+    AddCommandStrategy,
     CdCommandStrategy,
+    DefaultCommandStrategy,
+    DeleteCommandStrategy,
     GitInitCommandStrategy,
     GitRemoteCommandStrategy,
     InitCommandStrategy,
-    AddCommandStrategy,
     QueryCommandStrategy,
-    DeleteCommandStrategy,
     SearchCommandStrategy,
-    DefaultCommandStrategy,
 )
+from .services.file_service import FileService
+from .services.git_service import GitService
 from .stufflog_app import StufflogApp
 
 
@@ -32,17 +33,24 @@ def main():
         description="A general journalling CLI application that uses YAML files."
     )
 
+    # Add version argument
+    parser.add_argument(
+        "--version", action="version", version="%(prog)s version: 0.1.0"
+    )
+
+    # Define subparsers first
+    subparsers = parser.add_subparsers(dest="command", help="Command to execute")
+
+    # Add cd command (no category needed)
+    subparsers.add_parser("cd", help="Open a new shell in the stufflog directory")
+
+    # Category argument - only required for certain commands
     parser.add_argument(
         "category",
         help="Category for the stufflog (e.g., books, movies)",
         nargs="?",
         default=None,
     )
-
-    subparsers = parser.add_subparsers(dest="command", help="Command to execute")
-
-    # Add cd command (no category needed)
-    subparsers.add_parser("cd", help="Open a new shell in the stufflog directory")
 
     # Git command
     git_parser = subparsers.add_parser(
@@ -120,6 +128,14 @@ def main():
     }
 
     try:
+        # Check if category is required for this command
+        commands_requiring_category = ["init", "add", "query", "delete", "search"]
+        if args.command in commands_requiring_category and args.category is None:
+            print(
+                f"Error: '{args.command}' command requires a category", file=sys.stderr
+            )
+            return 1
+
         if args.command == "git":
             strategy = command_strategies.get(f"git_{args.git_command}")
         else:

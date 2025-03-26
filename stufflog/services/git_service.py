@@ -6,8 +6,8 @@ This module provides a GitService class that encapsulates git functionality
 to enable dependency injection and make testing easier.
 """
 
-import sys
 import subprocess
+import sys
 from pathlib import Path
 from typing import Optional
 

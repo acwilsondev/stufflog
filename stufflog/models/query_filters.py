@@ -17,6 +17,7 @@ class QueryFilter:
     after: Filter for entries with datetime after this value.
     before: Filter for entries with datetime before this value.
     """
+
     greater_than: Optional[int] = None
     less_than: Optional[int] = None
     after: Optional[str] = None

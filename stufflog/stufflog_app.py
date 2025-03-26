@@ -1,4 +1,7 @@
 """Class for stufflog application."""
+
+VERSION = "0.1.0"
+
 import datetime
 import os
 import subprocess

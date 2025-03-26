@@ -2,11 +2,12 @@
 This module defines the command strategies for the Stufflog application.
 """
 
-from abc import ABC, abstractmethod
 import sys
+from abc import ABC, abstractmethod
+
 from stufflog.exceptions import StufflogError
-from stufflog.stufflog_app import StufflogApp
 from stufflog.models.query_filters import QueryFilter
+from stufflog.stufflog_app import VERSION, StufflogApp
 
 
 class CommandStrategy(ABC):
@@ -33,6 +34,7 @@ class CommandStrategy(ABC):
 
 class CdCommandStrategy(CommandStrategy):
     """A command strategy for changing the current directory to the Stufflog directory."""
+
     def execute(self, app: StufflogApp, args) -> int:
         app.open_stufflog_dir()
         return 0
@@ -40,6 +42,7 @@ class CdCommandStrategy(CommandStrategy):
 
 class GitInitCommandStrategy(CommandStrategy):
     """A command strategy for initializing a git repository."""
+
     def execute(self, app: StufflogApp, args) -> int:
         if app.git_service.init():
             print("Git repository initialized successfully.")
@@ -50,6 +53,7 @@ class GitInitCommandStrategy(CommandStrategy):
 
 class GitRemoteCommandStrategy(CommandStrategy):
     """A command strategy for setting a remote git repository."""
+
     def execute(self, app: StufflogApp, args) -> int:
         if app.setup_git_remote(args.url, args.name):
             return 0
@@ -58,6 +62,7 @@ class GitRemoteCommandStrategy(CommandStrategy):
 
 class InitCommandStrategy(CommandStrategy):
     """A command strategy for initializing the Stufflog directory."""
+
     def execute(self, app: StufflogApp, args) -> int:
         app.init_stufflog(args.category)
         return 0
@@ -65,6 +70,7 @@ class InitCommandStrategy(CommandStrategy):
 
 class AddCommandStrategy(CommandStrategy):
     """A command strategy for adding an entry to a Stufflog category."""
+
     def execute(self, app: StufflogApp, args) -> int:
         app.add_entry(args.category, args.title, args.rating, args.comment)
         return 0
@@ -72,6 +78,7 @@ class AddCommandStrategy(CommandStrategy):
 
 class QueryCommandStrategy(CommandStrategy):
     """A command strategy for querying entries in a Stufflog category."""
+
     def execute(self, app: StufflogApp, args) -> int:
         query_filter = QueryFilter(
             greater_than=args.greater_than,
@@ -86,6 +93,7 @@ class QueryCommandStrategy(CommandStrategy):
 
 class DeleteCommandStrategy(CommandStrategy):
     """A command strategy for deleting an entry from a Stufflog category."""
+
     def execute(self, app: StufflogApp, args) -> int:
         app.delete_entry(args.category, args.title)
         return 0
@@ -93,6 +101,7 @@ class DeleteCommandStrategy(CommandStrategy):
 
 class SearchCommandStrategy(CommandStrategy):
     """A command strategy for searching entries in a Stufflog category."""
+
     def execute(self, app: StufflogApp, args) -> int:
         entries = app.search_entries(args.category, args.term)
         app.display_entries(entries)
@@ -101,12 +110,12 @@ class SearchCommandStrategy(CommandStrategy):
 
 class DefaultCommandStrategy(CommandStrategy):
     """A command strategy for displaying all entries in a Stufflog category."""
+
     def execute(self, app: StufflogApp, args) -> int:
         try:
             data = app.load_stufflog(args.category)
             entries = [
-                {**entry, "Title": title}
-                for title, entry in data["Entries"].items()
+                {**entry, "Title": title} for title, entry in data["Entries"].items()
             ]
             app.display_entries(entries)
             return 0
